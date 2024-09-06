@@ -366,8 +366,10 @@ class LycorisNetwork(torch.nn.Module):
             loras = []
             next_config = {}
             for name, module in root_module.named_modules():
+                print(name,end="")
                 module_name = module.__class__.__name__
                 if module_name in target_replace_modules:
+                    print("\ttrain",end="")
                     if module_name in self.MODULE_ALGO_MAP:
                         next_config = self.MODULE_ALGO_MAP[module_name]
                         algo = next_config.get("algo", network_module)
@@ -381,7 +383,10 @@ class LycorisNetwork(torch.nn.Module):
                     next_config = {}
                 elif name in target_replace_names or any(
                     re.match(t, name) for t in target_replace_names
+                ) or any(
+                    t in name for t in target_replace_names
                 ):
+                    print("\ttrain",end="")
                     if name in self.NAME_ALGO_MAP:
                         next_config = self.NAME_ALGO_MAP[name]
                         algo = next_config.get("algo", network_module)
@@ -396,6 +401,7 @@ class LycorisNetwork(torch.nn.Module):
                     next_config = {}
                     if lora is not None:
                         loras.append(lora)
+                print("")
             return loras
 
         self.loras = create_modules(
