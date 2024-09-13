@@ -457,6 +457,11 @@ class LycorisNetwork(torch.nn.Module):
             info = self.load_state_dict(self.weights_sd, False)
             logger.info(f"weights are loaded: {info}")
 
+    def to(self, device: torch.device = None, dtype: torch.dtype = None) -> 'LycorisNetwork':
+        for lora in self.loras:
+            lora.to(device, dtype)
+        return self
+
     def is_mergeable(self):
         return True
 
