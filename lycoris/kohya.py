@@ -62,6 +62,7 @@ def create_network(
     rs_lora = str_bool(kwargs.get("rs_lora", False))
     unbalanced_factorization = str_bool(kwargs.get("unbalanced_factorization", False))
     train_t5xxl = str_bool(kwargs.get("train_t5xxl", False))
+    train_text_encoders = kwargs.get("train_text_encoders", [True])
 
     if unbalanced_factorization:
         logger.info("Unbalanced factorization for LoKr is enabled")
@@ -114,6 +115,7 @@ def create_network(
         rs_lora=rs_lora,
         unbalanced_factorization=unbalanced_factorization,
         train_t5xxl=train_t5xxl,
+        train_text_encoders=train_text_encoders,
     )
 
     return network
@@ -281,6 +283,7 @@ class LycorisNetworkKohya(LycorisNetwork):
         norm_modules=NormModule,
         train_norm=False,
         train_t5xxl=False,
+        train_text_encoders=[True],
         **kwargs,
     ) -> None:
         torch.nn.Module.__init__(self)
@@ -473,6 +476,8 @@ class LycorisNetworkKohya(LycorisNetwork):
 
         self.text_encoder_loras = []
         for i, te in enumerate(text_encoders):
+            if not train_text_encoders[i]:
+                continue
             self.text_encoder_loras.extend(
                 create_modules(
                     LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER
@@ -593,7 +598,7 @@ class LycorisNetworkKohya(LycorisNetwork):
         self.loras = self.text_encoder_loras + self.unet_loras
         super().merge_to(1)
 
-    def prepare_optimizer_params(self, text_encoder_lr, unet_lr, learning_rate):
+    def prepare_optimizer_params(self, text_encoder_lrs, unet_lr, learning_rate):
         def enumerate_params(loras):
             params = []
             for lora in loras:
@@ -604,10 +609,11 @@ class LycorisNetworkKohya(LycorisNetwork):
         all_params = []
 
         if self.text_encoder_loras:
-            param_data = {"params": enumerate_params(self.text_encoder_loras)}
-            if text_encoder_lr is not None:
-                param_data["lr"] = text_encoder_lr
-            all_params.append(param_data)
+            for te_lora,t_lr in zip(self.text_encoder_loras,text_encoder_lrs):
+                param_data = {"params": enumerate_params(te_lora)}
+                if text_encoder_lrs is not None:
+                    param_data["lr"] = t_lr
+                all_params.append(param_data)
 
         if self.unet_loras:
             param_data = {"params": enumerate_params(self.unet_loras)}
