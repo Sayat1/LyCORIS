@@ -7,6 +7,9 @@ PRESET = {
             "Downsample2D",
             "Upsample2D",
             "HunYuanDiTBlock",
+            "DoubleStreamBlock",
+            "SingleStreamBlock",
+            "SingleDiTBlock",
         ],
         "unet_target_name": [
             "conv_in",
@@ -16,6 +19,7 @@ PRESET = {
         ],
         "text_encoder_target_module": [
             "CLIPAttention",
+            "CLIPSdpaAttention",
             "CLIPMLP",
             "MT5Block",
             "BertLayer",
@@ -28,6 +32,9 @@ PRESET = {
             "Transformer2DModel",
             "ResnetBlock2D",
             "HunYuanDiTBlock",
+            "DoubleStreamBlock",
+            "SingleStreamBlock",
+            "SingleDiTBlock",
         ],
         "unet_target_name": [
             "time_embedding.linear_1",
@@ -35,6 +42,7 @@ PRESET = {
         ],
         "text_encoder_target_module": [
             "CLIPAttention",
+            "CLIPSdpaAttention",
             "CLIPMLP",
             "MT5Block",
             "BertLayer",
@@ -46,10 +54,14 @@ PRESET = {
         "unet_target_module": [
             "Transformer2DModel",
             "HunYuanDiTBlock",
+            "DoubleStreamBlock",
+            "SingleStreamBlock",
+            "SingleDiTBlock",
         ],
         "unet_target_name": [],
         "text_encoder_target_module": [
             "CLIPAttention",
+            "CLIPSdpaAttention",
             "CLIPMLP",
             "MT5Block",
             "BertLayer",
@@ -65,6 +77,7 @@ PRESET = {
         "unet_target_name": [],
         "text_encoder_target_module": [
             "CLIPAttention",
+            "CLIPSdpaAttention",
             "BertAttention",
             "MT5LayerSelfAttention",
         ],
@@ -78,6 +91,9 @@ PRESET = {
             "Downsample2D",
             "Upsample2D",
             "HunYuanDiTBlock",
+            "DoubleStreamBlock",
+            "SingleStreamBlock",
+            "SingleDiTBlock",
         ],
         "unet_target_name": [
             "conv_in",
@@ -93,6 +109,9 @@ PRESET = {
         "unet_target_module": [
             "Transformer2DModel",
             "HunYuanDiTBlock",
+            "DoubleStreamBlock",
+            "SingleStreamBlock",
+            "SingleDiTBlock",
         ],
         "unet_target_name": [],
         "text_encoder_target_module": [],
