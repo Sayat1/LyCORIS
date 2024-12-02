@@ -610,7 +610,7 @@ class LycorisNetworkKohya(LycorisNetwork):
 
         if self.text_encoder_loras:
             for te_lora,t_lr in zip(self.text_encoder_loras,text_encoder_lrs):
-                param_data = {"params": enumerate_params(te_lora)}
+                param_data = {"params": enumerate_params([te_lora])}
                 if text_encoder_lrs is not None:
                     param_data["lr"] = t_lr
                 all_params.append(param_data)
