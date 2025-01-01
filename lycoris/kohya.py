@@ -615,7 +615,7 @@ class LycorisNetworkKohya(LycorisNetwork):
 
         return key_scaled, sum(norms) / len(norms), max(norms)
 
-    def prepare_optimizer_params(self, text_encoder_lr, unet_lr, learning_rate):
+    def prepare_optimizer_params(self, text_encoder_lrs, unet_lr, learning_rate):
         def enumerate_params(loras):
             params = []
             for lora in loras:
