@@ -417,6 +417,7 @@ class LycorisNetwork(torch.nn.Module):
             lora_map = {}
             next_config = {}
             for name, module in root_module.named_modules():
+                print(name,end="")
                 if name in target_exclude_names or any(
                     self.match_fn(t, name) for t in target_exclude_names
                 ):
