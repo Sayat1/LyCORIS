@@ -178,7 +178,7 @@ def create_network_from_weights(
 
     original_level = logger.level
     logger.setLevel(logging.ERROR)
-    network = LycorisNetworkKohya(text_encoder, unet)
+    network = LycorisNetworkKohya(text_encoder, unet, train_text_encoders=[True,True])
     network.unet_loras = []
     network.text_encoder_loras = []
     logger.setLevel(original_level)
