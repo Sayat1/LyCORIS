@@ -373,7 +373,7 @@ class LokrModule(LycorisBaseModule):
         if shape is not None:
             weight = weight.view(shape)
         if self.training and self.rank_dropout:
-            drop = (torch.rand(weight.size(0)) > self.rank_dropout).to(dtype)
+            drop = (torch.rand(weight.size(0)) > self.rank_dropout).to(dtype=dtype, device=weight.device)
             drop = drop.view(-1, *[1] * len(weight.shape[1:]))
             if self.rank_dropout_scale:
                 drop /= drop.mean()
