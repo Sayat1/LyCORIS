@@ -626,34 +626,46 @@ class LycorisNetworkKohya(LycorisNetwork):
         all_params = []
 
         if self.text_encoder_loras:
-            for te_lora,t_lr in zip(self.text_encoder_loras,text_encoder_lrs):
-                param_data = {"params": enumerate_params([te_lora])}
-                if text_encoder_lrs is not None:
-                    param_data["lr"] = t_lr
-                all_params.append(param_data)
+            te1_loras = [item for item in self.text_encoder_loras if 'te1' in item.lora_name]
+            te2_loras = [item for item in self.text_encoder_loras if 'te2' in item.lora_name]
+            for te_lora,t_lr in zip([te1_loras,te2_loras],text_encoder_lrs):
+              attn_params=[]
+              mlp_params=[]
+              for lora in te_lora:
+                if 'attn' in lora.lora_name:
+                  attn_params.extend(lora.parameters())
+                elif 'mlp' in lora.lora_name:
+                  mlp_params.extend(lora.parameters())
+              for params in [attn_params,mlp_params]:
+                if len(params) >0:
+                  param_data = {"params": params}
+                  if text_encoder_lrs is not None:
+                      param_data["lr"] = t_lr
+                  all_params.append(param_data)
+                  print(f"te block created with {len(params)}")
 
         if self.unet_loras:
-            ex_lora_name = lora_name = ""
-            params = []
+            attn1_params=[]
+            attn2_params=[]
+            ff_params=[]
+            proj_params=[]
             for lora in self.unet_loras:
-                lora_name = re.search(r"((middle_block|input_blocks|output_blocks)_\d(_\d)?)",lora.lora_name)[0]
-                if ex_lora_name == "":
-                  ex_lora_name = lora_name
-                if ex_lora_name != lora_name and len(params) > 0:
-                    param_data = {"params":params}
-                    if unet_lr is not None:
-                        param_data["lr"] = unet_lr
-                    all_params.append(param_data)
-                    print(f"{ex_lora_name} created with {len(params)}")
-                    ex_lora_name = lora_name
-                    params = []
-                params.extend(lora.parameters())
-            if len(params) >0:
-                param_data = {"params":params}
+                if 'attn1' in lora.lora_name:
+                    attn1_params.extend(lora.parameters())
+                elif 'attn2' in lora.lora_name:
+                    attn2_params.extend(lora.parameters())
+                elif 'ff' in lora.lora_name:
+                    ff_params.extend(lora.parameters())
+                elif 'proj_in' in lora.lora_name or 'proj_out' in lora.lora_name:
+                    proj_params.extend(lora.parameters())
+
+            for params in [attn1_params,attn2_params,ff_params,proj_params]:
+              if len(params) >0:
+                param_data = {"params": params}
                 if unet_lr is not None:
                     param_data["lr"] = unet_lr
                 all_params.append(param_data)
-                print(f"{lora_name} created with {len(params)}")
+                print(f"block created with {len(params)}")
 
         return all_params
 
