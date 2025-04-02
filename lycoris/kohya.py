@@ -633,10 +633,27 @@ class LycorisNetworkKohya(LycorisNetwork):
                 all_params.append(param_data)
 
         if self.unet_loras:
-            param_data = {"params": enumerate_params(self.unet_loras)}
-            if unet_lr is not None:
-                param_data["lr"] = unet_lr
-            all_params.append(param_data)
+            ex_lora_name = lora_name = ""
+            params = []
+            for lora in self.unet_loras:
+                lora_name = re.search(r"((middle_block|input_blocks|output_blocks)_\d(_\d)?)",lora.lora_name)[0]
+                if ex_lora_name == "":
+                  ex_lora_name = lora_name
+                if ex_lora_name != lora_name and len(params) > 0:
+                    param_data = {"params":params}
+                    if unet_lr is not None:
+                        param_data["lr"] = unet_lr
+                    all_params.append(param_data)
+                    print(f"{ex_lora_name} created with {len(params)}")
+                    ex_lora_name = lora_name
+                    params = []
+                params.extend(lora.parameters())
+            if len(params) >0:
+                param_data = {"params":params}
+                if unet_lr is not None:
+                    param_data["lr"] = unet_lr
+                all_params.append(param_data)
+                print(f"{lora_name} created with {len(params)}")
 
         return all_params
 
