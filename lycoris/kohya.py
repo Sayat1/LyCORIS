@@ -645,21 +645,18 @@ class LycorisNetworkKohya(LycorisNetwork):
                   print(f"te block created with {len(params)}")
 
         if self.unet_loras:
-            attn1_params=[]
-            attn2_params=[]
+            attn_params=[]
             ff_params=[]
             proj_params=[]
             for lora in self.unet_loras:
-                if 'attn1' in lora.lora_name:
-                    attn1_params.extend(lora.parameters())
-                elif 'attn2' in lora.lora_name:
-                    attn2_params.extend(lora.parameters())
+                if 'attn' in lora.lora_name:
+                    attn_params.extend(lora.parameters())
                 elif 'ff' in lora.lora_name:
                     ff_params.extend(lora.parameters())
                 elif 'proj_in' in lora.lora_name or 'proj_out' in lora.lora_name:
                     proj_params.extend(lora.parameters())
 
-            for params in [attn1_params,attn2_params,ff_params,proj_params]:
+            for params in [attn_params,ff_params,proj_params]:
               if len(params) >0:
                 param_data = {"params": params}
                 if unet_lr is not None:
