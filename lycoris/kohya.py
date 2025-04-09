@@ -624,45 +624,56 @@ class LycorisNetworkKohya(LycorisNetwork):
 
         self.requires_grad_(True)
         all_params = []
+        module_names=["attn","ff_net","proj_","mlp_"]
 
         if self.text_encoder_loras:
             te1_loras = [item for item in self.text_encoder_loras if 'te1' in item.lora_name]
             te2_loras = [item for item in self.text_encoder_loras if 'te2' in item.lora_name]
             for te_lora,t_lr in zip([te1_loras,te2_loras],text_encoder_lrs):
-              attn_params=[]
-              mlp_params=[]
+              module_loras={}
               for lora in te_lora:
-                if 'attn' in lora.lora_name:
-                  attn_params.extend(lora.parameters())
-                elif 'mlp' in lora.lora_name:
-                  mlp_params.extend(lora.parameters())
-              for params in [attn_params,mlp_params]:
+                selected=False
+                for module_name in module_names:
+                    if module_name in lora.lora_name:
+                        if not module_name in module_loras:
+                            module_loras[module_name] = []
+                        module_loras[module_name].extend(lora.parameters())
+                        selected = True
+                        break
+                if not selected:
+                    if not 'etc' in module_loras:
+                        module_loras['etc'] = []
+                    module_loras['etc'].extend(lora.parameters())
+              for key,params in module_loras.items():
                 if len(params) >0:
                   param_data = {"params": params}
                   if text_encoder_lrs is not None:
                       param_data["lr"] = t_lr
                   all_params.append(param_data)
-                  print(f"te block created with {len(params)}")
+                  print(f"TE {key} block created with {len(params)}")
 
         if self.unet_loras:
-            attn_params=[]
-            ff_params=[]
-            proj_params=[]
+            module_loras={}
             for lora in self.unet_loras:
-                if 'attn' in lora.lora_name:
-                    attn_params.extend(lora.parameters())
-                elif 'ff' in lora.lora_name:
-                    ff_params.extend(lora.parameters())
-                elif 'proj_in' in lora.lora_name or 'proj_out' in lora.lora_name:
-                    proj_params.extend(lora.parameters())
-
-            for params in [attn_params,ff_params,proj_params]:
-              if len(params) >0:
-                param_data = {"params": params}
-                if unet_lr is not None:
-                    param_data["lr"] = unet_lr
-                all_params.append(param_data)
-                print(f"block created with {len(params)}")
+                selected=False
+                for module_name in module_names:
+                    if module_name in lora.lora_name:
+                        if not module_name in module_loras:
+                            module_loras[module_name] = []
+                        module_loras[module_name].extend(lora.parameters())
+                        selected = True
+                        break
+                if not selected:
+                    if not 'etc' in module_loras:
+                        module_loras['etc'] = []
+                    module_loras['etc'].extend(lora.parameters())
+            for key,params in module_loras.items():
+                if len(params) >0:
+                    param_data = {"params": params}
+                    if unet_lr is not None:
+                        param_data["lr"] = unet_lr
+                    all_params.append(param_data)
+                    print(f"UNET {key} block created with {len(params)}")
 
         return all_params
 
