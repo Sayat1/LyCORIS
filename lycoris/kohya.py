@@ -633,12 +633,14 @@ class LycorisNetworkKohya(LycorisNetwork):
                 if text_encoder_lrs is not None:
                     param_data["lr"] = t_lr
                 all_params.append(param_data)
+                print(f"TE param created with {len(te_lora)}")
 
         if self.unet_loras:
             param_data = {"params": enumerate_params(self.unet_loras)}
             if unet_lr is not None:
                 param_data["lr"] = unet_lr
             all_params.append(param_data)
+            print(f"UNET param created with {len(self.unet_loras)}")
 
         return all_params
 
