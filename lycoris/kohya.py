@@ -522,7 +522,7 @@ class LycorisNetworkKohya(LycorisNetwork):
     def match_fn(self, pattern: str, name: str) -> bool:
         if self.USE_FNMATCH:
             return fnmatch.fnmatch(name, pattern)
-        return re.match(pattern, name)
+        return re.search(pattern, name)
 
     def find_conf_for_name(
         self,
