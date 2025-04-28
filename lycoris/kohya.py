@@ -57,13 +57,29 @@ def create_network(
     constraint = float(kwargs.get("constraint", None) or 0)
     rescaled = str_bool(kwargs.get("rescaled", False))
     weight_decompose = str_bool(kwargs.get("dora_wd", False))
-    wd_on_output = str_bool(kwargs.get("wd_on_output", False))
+    wd_on_output = str_bool(kwargs.get("wd_on_output", True))
     full_matrix = str_bool(kwargs.get("full_matrix", False))
-    bypass_mode = str_bool(kwargs.get("bypass_mode", None))
+    bypass_mode = str_bool(kwargs.get("bypass_mode", False))
     rs_lora = str_bool(kwargs.get("rs_lora", False))
     unbalanced_factorization = str_bool(kwargs.get("unbalanced_factorization", False))
     train_t5xxl = str_bool(kwargs.get("train_t5xxl", False))
     train_text_encoders = kwargs.get("train_text_encoders", [True])
+    # lora_plus
+    loraplus_lr_ratio = (
+        float(kwargs.get("loraplus_lr_ratio", None))
+        if kwargs.get("loraplus_lr_ratio", None) is not None
+        else None
+    )
+    loraplus_unet_lr_ratio = (
+        float(kwargs.get("loraplus_unet_lr_ratio", None))
+        if kwargs.get("loraplus_unet_lr_ratio", None) is not None
+        else None
+    )
+    loraplus_text_encoder_lr_ratio = (
+        float(kwargs.get("loraplus_text_encoder_lr_ratio", None))
+        if kwargs.get("loraplus_text_encoder_lr_ratio", None) is not None
+        else None
+    )
 
     if unbalanced_factorization:
         logger.info("Unbalanced factorization for LoKr is enabled")
@@ -119,6 +135,14 @@ def create_network(
         train_t5xxl=train_t5xxl,
         train_text_encoders=train_text_encoders,
     )
+    if (
+        loraplus_lr_ratio is not None
+        or loraplus_unet_lr_ratio is not None
+        or loraplus_text_encoder_lr_ratio is not None
+    ):
+        network.set_loraplus_lr_ratio(
+            loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio
+        )
 
     return network
 
@@ -159,22 +183,23 @@ def create_network_from_weights(
         if lora_name in unet_loras:
             unet_loras[lora_name] = modules
 
-    if isinstance(text_encoder, list):
-        text_encoders = text_encoder
-        use_index = True
-    else:
-        text_encoders = [text_encoder]
-        use_index = False
-
-    for idx, te in enumerate(text_encoders):
-        if use_index:
-            prefix = f"{LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER}{idx+1}"
+    if text_encoder:
+        if isinstance(text_encoder, list):
+            text_encoders = text_encoder
+            use_index = True
         else:
-            prefix = LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER
-        for name, modules in te.named_modules():
-            lora_name = f"{prefix}_{name}".replace(".", "_")
-            if lora_name in te_loras:
-                te_loras[lora_name] = modules
+            text_encoders = [text_encoder]
+            use_index = False
+
+        for idx, te in enumerate(text_encoders):
+            if use_index:
+                prefix = f"{LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER}{idx+1}"
+            else:
+                prefix = LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER
+            for name, modules in te.named_modules():
+                lora_name = f"{prefix}_{name}".replace(".", "_")
+                if lora_name in te_loras:
+                    te_loras[lora_name] = modules
 
     original_level = logger.level
     logger.setLevel(logging.ERROR)
@@ -194,14 +219,16 @@ def create_network_from_weights(
     logger.info(f"{len(network.unet_loras)} Modules Loaded")
 
     logger.info("Loading TE Modules from state dict...")
-    for lora_name, orig_modules in te_loras.items():
-        if orig_modules is None:
-            continue
-        lyco_type, params = get_module(weights_sd, lora_name)
-        module = make_module(lyco_type, params, lora_name, orig_modules)
-        if module is not None:
-            network.text_encoder_loras.append(module)
-    logger.info(f"{len(network.text_encoder_loras)} Modules Loaded")
+
+    if text_encoder:
+        for lora_name, orig_modules in te_loras.items():
+            if orig_modules is None:
+                continue
+            lyco_type, params = get_module(weights_sd, lora_name)
+            module = make_module(lyco_type, params, lora_name, orig_modules)
+            if module is not None:
+                network.text_encoder_loras.append(module)
+        logger.info(f"{len(network.text_encoder_loras)} Modules Loaded")
 
     for lora in network.unet_loras + network.text_encoder_loras:
         lora.multiplier = multiplier
@@ -225,6 +252,11 @@ class LycorisNetworkKohya(LycorisNetwork):
         "DoubleStreamBlock",
         "SingleStreamBlock",
         "SingleDiTBlock",
+        "MMDoubleStreamBlock",  # HunYuanVideo
+        "MMSingleStreamBlock",  # HunYuanVideo
+        "WanAttentionBlock", # Wan
+        "HunyuanVideoTransformerBlock", # FramePack
+        "HunyuanVideoSingleTransformerBlock", # FramePack
     ]
     UNET_TARGET_REPLACE_NAME = [
         "conv_in",
@@ -293,6 +325,11 @@ class LycorisNetworkKohya(LycorisNetwork):
         self.multiplier = multiplier
         self.lora_dim = lora_dim
         self.train_t5xxl = train_t5xxl
+
+        # 初始化LoRA+相关属性
+        self.loraplus_lr_ratio = None
+        self.loraplus_unet_lr_ratio = None
+        self.loraplus_text_encoder_lr_ratio = None
 
         if not self.ENABLE_CONV:
             conv_lora_dim = 0
@@ -469,29 +506,30 @@ class LycorisNetworkKohya(LycorisNetwork):
             ]
             LycorisNetworkKohya.UNET_TARGET_REPLACE_NAME = []
 
-        if isinstance(text_encoder, list):
-            text_encoders = text_encoder
-            use_index = True
-        else:
-            text_encoders = [text_encoder]
-            use_index = False
-
         self.text_encoder_loras = []
-        for i, te in enumerate(text_encoders):
-            if not train_text_encoders[i]:
-                continue
-            self.text_encoder_loras.extend(
-                create_modules(
-                    LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER
-                    + (f"{i+1}" if use_index else ""),
-                    te,
-                    LycorisNetworkKohya.TEXT_ENCODER_TARGET_REPLACE_MODULE,
-                    LycorisNetworkKohya.TEXT_ENCODER_TARGET_REPLACE_NAME,
+        if text_encoder:
+            if isinstance(text_encoder, list):
+                text_encoders = text_encoder
+                use_index = True
+            else:
+                text_encoders = [text_encoder]
+                use_index = False
+
+            for i, te in enumerate(text_encoders):
+                if not train_text_encoders[i]:
+                    continue
+                self.text_encoder_loras.extend(
+                    create_modules(
+                        LycorisNetworkKohya.LORA_PREFIX_TEXT_ENCODER
+                        + (f"{i+1}" if use_index else ""),
+                        te,
+                        LycorisNetworkKohya.TEXT_ENCODER_TARGET_REPLACE_MODULE,
+                        LycorisNetworkKohya.TEXT_ENCODER_TARGET_REPLACE_NAME,
+                    )
                 )
+            logger.info(
+                f"create LyCORIS for Text Encoder: {len(self.text_encoder_loras)} modules."
             )
-        logger.info(
-            f"create LyCORIS for Text Encoder: {len(self.text_encoder_loras)} modules."
-        )
 
         self.unet_loras = create_modules(
             LycorisNetworkKohya.LORA_PREFIX_UNET,
@@ -615,36 +653,96 @@ class LycorisNetworkKohya(LycorisNetwork):
 
         return key_scaled, sum(norms) / len(norms), max(norms)
 
-    def prepare_optimizer_params(self, text_encoder_lrs, unet_lr, learning_rate):
-        def enumerate_params(loras):
-            params = []
-            for lora in loras:
-                params.extend(lora.parameters())
-            return params
+    def set_loraplus_lr_ratio(
+        self, loraplus_lr_ratio, loraplus_unet_lr_ratio, loraplus_text_encoder_lr_ratio
+    ):
+        self.loraplus_lr_ratio = loraplus_lr_ratio
+        self.loraplus_unet_lr_ratio = loraplus_unet_lr_ratio
+        self.loraplus_text_encoder_lr_ratio = loraplus_text_encoder_lr_ratio
 
+        logger.info(
+            f"LoRA+ UNet LR Ratio: {self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio}"
+        )
+        logger.info(
+            f"LoRA+ Text Encoder LR Ratio: {self.loraplus_text_encoder_lr_ratio or self.loraplus_lr_ratio}"
+        )
+
+    def prepare_optimizer_params(
+        self, text_encoder_lrs=None, unet_lr: float = 1e-4, learning_rate=None
+    ):
         self.requires_grad_(True)
+
         all_params = []
+        lr_descriptions = []
+
+        def assemble_params(loras, lr, ratio):
+            param_groups = {"lora": {}, "plus": {}}
+            for lora in loras:
+                for name, param in lora.named_parameters():
+                    if ratio is not None and "lora_up" in name:
+                        param_groups["plus"][f"{lora.lora_name}.{name}"] = param
+                    else:
+                        param_groups["lora"][f"{lora.lora_name}.{name}"] = param
+
+            params = []
+            descriptions = []
+            for key in param_groups.keys():
+                param_data = {"params": param_groups[key].values()}
+
+                if len(param_data["params"]) == 0:
+                    continue
+
+                if lr is not None:
+                    if key == "plus":
+                        param_data["lr"] = lr * ratio
+                    else:
+                        param_data["lr"] = lr
+
+                if (
+                    param_data.get("lr", None) == 0
+                    or param_data.get("lr", None) is None
+                ):
+                    logger.info("NO LR skipping!")
+                    continue
+
+                params.append(param_data)
+                descriptions.append("plus" if key == "plus" else "")
+
+            return params, descriptions
 
         if self.text_encoder_loras:
             te1_loras = [item for item in self.text_encoder_loras if 'te1' in item.lora_name]
             te2_loras = [item for item in self.text_encoder_loras if 'te2' in item.lora_name]
-            for te_lora,t_lr in zip([te1_loras,te2_loras],text_encoder_lrs):
-                if len(te_lora) == 0:
+            for i, (te_loras,t_lr) in enumerate(zip([te1_loras,te2_loras],text_encoder_lrs,strict=True)):
+                if len(te_loras) == 0:
                   continue
-                param_data = {"params": enumerate_params(te_lora)}
-                if text_encoder_lrs is not None:
-                    param_data["lr"] = t_lr
-                all_params.append(param_data)
-                print(f"TE param created with {len(te_lora)}")
+                params, descriptions = assemble_params(
+                te_loras,
+                t_lr if t_lr is not None else learning_rate,
+                self.loraplus_text_encoder_lr_ratio or self.loraplus_lr_ratio,
+                )
+                all_params.extend(params)
+                lr_descriptions.extend(
+                    [f"textencoder {i+1}" + (" " + d if d else "") for d in descriptions]
+                )
+
+                print(f"TE{i+1} param created with {len(te_loras)}")
 
         if self.unet_loras:
-            param_data = {"params": enumerate_params(self.unet_loras)}
-            if unet_lr is not None:
-                param_data["lr"] = unet_lr
-            all_params.append(param_data)
-            print(f"UNET param created with {len(self.unet_loras)}")
+            params, descriptions = assemble_params(
+                self.unet_loras,
+                unet_lr if unet_lr is not None else learning_rate,
+                self.loraplus_unet_lr_ratio or self.loraplus_lr_ratio,
+            )
+            all_params.extend(params)
+            lr_descriptions.extend(
+                ["unet" + (" " + d if d else "") for d in descriptions]
+            )
 
-        return all_params
+        return all_params, lr_descriptions
+
+    def get_trainable_params(self):
+        return self.parameters()
 
     def save_weights(self, file, dtype, metadata):
         if metadata is not None and len(metadata) == 0:
