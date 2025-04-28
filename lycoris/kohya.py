@@ -726,7 +726,7 @@ class LycorisNetworkKohya(LycorisNetwork):
                     [f"textencoder {i+1}" + (" " + d if d else "") for d in descriptions]
                 )
 
-                print(f"TE{i+1} param created with {len(te_loras)}")
+                print(f"TE{i+1} param created with {len(params)}")
 
         if self.unet_loras:
             params, descriptions = assemble_params(
@@ -738,6 +738,7 @@ class LycorisNetworkKohya(LycorisNetwork):
             lr_descriptions.extend(
                 ["unet" + (" " + d if d else "") for d in descriptions]
             )
+            print(f"UNET param created with {len(params)}")
 
         return all_params, lr_descriptions
 
