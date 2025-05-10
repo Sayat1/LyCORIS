@@ -724,13 +724,13 @@ class LycorisNetworkKohya(LycorisNetwork):
                         if module_name in lora.lora_name:
                             if not module_name in module_loras:
                                 module_loras[module_name] = []
-                            module_loras[module_name].extend(lora)
+                            module_loras[module_name].append(lora)
                             selected = True
                             break
                     if not selected:
                         if not 'etc' in module_loras:
                             module_loras['etc'] = []
-                        module_loras['etc'].extend(lora.parameters())
+                        module_loras['etc'].append(lora)
                 for key,loras in module_loras.items():
                     if len(loras) >0:
                         params, descriptions = assemble_params(
@@ -753,13 +753,13 @@ class LycorisNetworkKohya(LycorisNetwork):
                     if module_name in lora.lora_name:
                         if not module_name in module_loras:
                             module_loras[module_name] = []
-                        module_loras[module_name].extend(lora)
+                        module_loras[module_name].append(lora)
                         selected = True
                         break
                 if not selected:
                     if not 'etc' in module_loras:
                         module_loras['etc'] = []
-                    module_loras['etc'].extend(lora)
+                    module_loras['etc'].append(lora)
             for key,loras in module_loras.items():
                 if len(loras) >0:
                     params, descriptions = assemble_params(
