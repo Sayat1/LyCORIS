@@ -775,6 +775,19 @@ class LycorisNetworkKohya(LycorisNetwork):
 
         return all_params, lr_descriptions
 
+    def enable_gradient_checkpointing(self):
+        # not supported
+        pass
+
+    def prepare_grad_etc(self, *args):
+        self.requires_grad_(True)
+
+    def on_epoch_start(self, *args):
+        self.train()
+
+    def on_step_start(self, *args):
+        pass
+
     def get_trainable_params(self):
         return self.parameters()
 
