@@ -668,12 +668,12 @@ class LycorisNetworkKohya(LycorisNetwork):
         )
 
     def prepare_optimizer_params(
-        self, text_encoder_lrs=None, unet_lr: float = 1e-4, learning_rate=None
+        self, text_encoder_lrs=None, unet_lr: float = 1e-4, learning_rate=None, target_names=[""]
     ):
         self.requires_grad_(True)
 
         all_params = []
-        module_names=["attn","ff_net","proj_","mlp_"]
+        target_module_names=target_names
         lr_descriptions = []
 
         def assemble_params(loras, lr, ratio):
@@ -720,7 +720,7 @@ class LycorisNetworkKohya(LycorisNetwork):
                 module_loras={}
                 for lora in te_loras:
                     selected=False
-                    for module_name in module_names:
+                    for module_name in target_module_names:
                         if module_name in lora.lora_name:
                             if not module_name in module_loras:
                                 module_loras[module_name] = []
@@ -749,7 +749,7 @@ class LycorisNetworkKohya(LycorisNetwork):
             module_loras={}
             for lora in self.unet_loras:
                 selected=False
-                for module_name in module_names:
+                for module_name in target_module_names:
                     if module_name in lora.lora_name:
                         if not module_name in module_loras:
                             module_loras[module_name] = []
