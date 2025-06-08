@@ -679,7 +679,7 @@ class LycorisNetworkKohya(LycorisNetwork):
             param_groups = {"lora": {}, "plus": {}}
             for lora in loras:
                 for name, param in lora.named_parameters():
-                    if ratio is not None and ("lora_up" in name or "lokr_w1_a" in name or "lokr_w2_a" in name):
+                    if ratio is not None and "ff_net" in name:#("lora_up" in name or "lokr_w1_a" in name or "lokr_w2_a" in name):
                         param_groups["plus"][f"{lora.lora_name}.{name}"] = param
                     else:
                         param_groups["lora"][f"{lora.lora_name}.{name}"] = param
