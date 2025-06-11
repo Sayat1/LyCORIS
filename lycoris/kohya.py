@@ -739,6 +739,8 @@ class LycorisNetworkKohya(LycorisNetwork):
                 ["unet" + (" " + d if d else "") for d in descriptions]
             )
             print(f"UNET param created with {sum(len(param['params']) for param in params)}")
+            
+            print(f"UNET plus params {sum(len([d for d in descriptions if d != ""]))}")
 
         return all_params, lr_descriptions
 
