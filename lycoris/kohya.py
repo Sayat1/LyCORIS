@@ -727,6 +727,11 @@ class LycorisNetworkKohya(LycorisNetwork):
                 )
 
                 print(f"TE{i+1} param created with {sum(len(param['params']) for param in params)}")
+                try:
+                    plus_index = descriptions.index("plus")
+                    print(f"TE{i+1} plus param count: {len(params[plus_index]['params'])}")
+                except ValueError:
+                    pass
 
         if self.unet_loras:
             params, descriptions = assemble_params(
@@ -739,8 +744,12 @@ class LycorisNetworkKohya(LycorisNetwork):
                 ["unet" + (" " + d if d else "") for d in descriptions]
             )
             print(f"UNET param created with {sum(len(param['params']) for param in params)}")
-            
-            print(f"UNET plus params {sum(len([d for d in descriptions if d != ""]))}")
+            try:
+                plus_index = descriptions.index("plus")
+                print(f"UNET plus param count: {len(params[plus_index]['params'])}")
+            except ValueError:
+                pass
+            print(f"UNET plus params {len([d for d in descriptions if d == 'plus'])}")
 
         return all_params, lr_descriptions
 
