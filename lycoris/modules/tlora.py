@@ -259,6 +259,10 @@ class TLoraModule(LycorisBaseModule):
                 # Reshape conv weight to 2D: (out_dim, in_dim * kernel_size)
                 weight = weight.reshape(out_dim, -1)
 
+            assert not torch.isnan(weight).any(), "NaN detected"
+            assert not torch.isinf(weight).any(), "Inf detected"
+            eps = 1e-8
+            weight = weight + eps * torch.eye(weight.shape[-1], device=weight.device)
             u, s, vh = torch.linalg.svd(weight, full_matrices=False)
         else:
             # SVD of random matrix (data-independent init)
